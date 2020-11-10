@@ -1,0 +1,9 @@
+*.[oa]
+*~
+*.save
+*.gcda
+*.gcno
+*-test
+plugin.c
+cmake_install.cmake
+CMakeFiles/
