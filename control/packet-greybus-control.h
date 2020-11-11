@@ -1,4 +1,4 @@
-/* packet-greybus.h
+/* packet-greybus-control.h
  *
  * Definitions for Greybus packet disassembly structures and routines
  * By Christopher Friedt <chrisfriedt@gmail.com>

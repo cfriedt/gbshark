@@ -13,7 +13,7 @@ include(WiresharkPlugin)
 set_module_info(greybus 0 0 1 0)
 
 set(DISSECTOR_SRC
-	packet-greybus.c
+	packet-greybus-control.c
 )
 
 set(PLUGIN_FILES
@@ -27,23 +27,26 @@ set_source_files_properties(
 	COMPILE_FLAGS "${WERROR_COMMON_FLAGS}"
 )
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(
+	${CMAKE_CURRENT_SOURCE_DIR}
+	${CMAKE_CURRENT_SOURCE_DIR}/../include
+)
 
 register_plugin_files(plugin.c
 	plugin
 	${DISSECTOR_SRC}
 )
 
-add_plugin_library(greybus epan)
+add_plugin_library(greybus-control epan)
 
-target_link_libraries(greybus epan)
+target_link_libraries(greybus-control epan)
 
-install_plugin(greybus epan)
+install_plugin(greybus-control epan)
 
 file(GLOB DISSECTOR_HEADERS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.h")
 CHECKAPI(
 	NAME
-	  greybus
+	  greybus-control
 	SWITCHES
 	  -g abort -g termoutput
 	SOURCES
