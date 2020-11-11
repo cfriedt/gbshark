@@ -16,6 +16,7 @@
 
 #include "config.h"
 
+#include <epan/decode_as.h>
 #include <epan/packet.h>
 #include <epan/prefs.h>
 #include <epan/expert.h>
@@ -36,6 +37,9 @@
 void proto_register_greybus(void);
 void proto_reg_handoff_greybus(void);
 
+static gpointer greybus_value(packet_info *pinfo);
+static void greybus_prompt(packet_info *pinfo, gchar* result);
+
 static int proto_greybus = -1;
 
 static int hf_greybus_size;
@@ -48,6 +52,7 @@ static int hf_greybus_pad;
 static gint ett_greybus = -1;
 static dissector_handle_t greybus_handle;
 static const true_false_string true_false = { "True", "False" };
+static dissector_table_t greybus_dissector_table;
 
 #define _decl(x) { GB_CONTROL_TYPE_ ## x, #x }
 static const value_string packettypenames[] = {
@@ -139,6 +144,30 @@ static hf_register_info greybus_hf[] = {
 static gint *greybus_ett[] = {
     &ett_greybus
 };
+static build_valid_func greybus_da_build_value[1] = {
+		greybus_value,
+};
+static decode_as_value_t greybus_da_values = {
+		greybus_prompt,
+		1,
+		greybus_da_build_value,
+};
+static decode_as_t greybus_da = {
+		GREYBUS_PROTOCOL_SHORT_NAME,
+		GREYBUS_PROTOCOL_FILTER_NAME ".type",
+#if VERSION_MAJOR == 2
+		"",
+#endif
+		1,
+		0,
+		&greybus_da_values,
+		NULL,
+		NULL,
+		decode_as_default_populate_list,
+		decode_as_default_reset,
+		decode_as_default_change,
+		NULL,
+};
 
 static int
 dissect_greybus(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void *data _U_)
@@ -167,6 +196,17 @@ dissect_greybus(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void *d
     return tvb_captured_length(tvb);
 }
 
+static gpointer greybus_value(packet_info *pinfo)
+{
+       return p_get_proto_data(pinfo->pool, pinfo, proto_greybus, 0);
+}
+
+static void greybus_prompt(packet_info *pinfo, gchar* result)
+{
+       (void)pinfo;
+       g_snprintf(result, MAX_DECODE_AS_PROMPT_LEN, GREYBUS_PROTOCOL_SHORT_NAME);
+}
+
 void proto_register_greybus(void)
 {
     proto_greybus = proto_register_protocol(
@@ -175,12 +215,14 @@ void proto_register_greybus(void)
         GREYBUS_PROTOCOL_FILTER_NAME
         );
 
+    greybus_handle = register_dissector(GREYBUS_PROTOCOL_FILTER_NAME, dissect_greybus, proto_greybus);
     proto_register_field_array(proto_greybus, greybus_hf, array_length(greybus_hf));
     proto_register_subtree_array(greybus_ett, array_length(greybus_ett));
+    greybus_dissector_table = register_dissector_table(GREYBUS_PROTOCOL_FILTER_NAME ".type", GREYBUS_PROTOCOL_SHORT_NAME " Type", proto_greybus, FT_UINT8, BASE_HEX);
+    register_decode_as(&greybus_da);
 }
 
 void proto_reg_handoff_greybus(void)
 {
-    greybus_handle = create_dissector_handle(dissect_greybus, proto_greybus);
-    dissector_add_uint("tcp.port", GREYBUS_PORT, greybus_handle);
+	dissector_add_for_decode_as("tcp.port", greybus_handle);
 }
